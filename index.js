@@ -1,25 +1,26 @@
 const { Client, GatewayIntentBits, SlashCommandBuilder, Routes, EmbedBuilder } = require('discord.js');
 const { REST } = require('@discordjs/rest');
 const admin = require('firebase-admin');
+const express = require('express');
 
-// This package loads your hidden secrets from your local .env file safely
-require('dotenv').config(); 
+// 1. Keep Cloud Server Alive Loop
+const app = express();
+app.get('/', (req, res) => res.send('MLBG Engine Online'));
+app.listen(process.env.PORT || 3000, () => console.log('Web listener mapped to cloud port.'));
 
-// 1. Firebase Administration Integration Engine Setup
+// 2. Firebase Administration Integration Engine Setup
 const serviceAccount = require('./firebase-service-account.json');
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 const db = admin.firestore();
 
-// 2. Initialize Discord Client
+// 3. Initialize Discord Client Application Client Core
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
-
-// SECURE FIX: We now pull these from your hidden local environment variables!
 const TOKEN = process.env.DISCORD_TOKEN; 
-const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_ID = process.env.CLIENT_ID;   
 
-// 3. Declarative Interlocking Command Array Map Matrix
+// 4. Declarative Interlocking Command Array Map Matrix
 const commands = [
   new SlashCommandBuilder()
     .setName('suggest')
@@ -58,7 +59,7 @@ const commands = [
     .addUserOption(opt => opt.setName('target').setDescription('The user you want to target').setRequired(true))
 ].map(command => command.toJSON());
 
-// 4. Processing Interceptor Mechanics Execution Framework
+// 5. Processing Interceptor Mechanics Execution Framework
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
   const { commandName, options } = interaction;
@@ -140,7 +141,7 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
-// 5. Initial Injection Runner Deployment Core
+// 6. Initial Injection Runner Deployment Core
 (async () => {
   const rest = new REST({ version: '10' }).setToken(TOKEN);
   try {
