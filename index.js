@@ -2,18 +2,22 @@ const { Client, GatewayIntentBits, SlashCommandBuilder, Routes, EmbedBuilder } =
 const { REST } = require('@discordjs/rest');
 const admin = require('firebase-admin');
 
+// This package loads your hidden secrets from your local .env file safely
+require('dotenv').config(); 
+
 // 1. Firebase Administration Integration Engine Setup
-// Remember to place your generated service account json directly inside your running bot directory root folder!
 const serviceAccount = require('./firebase-service-account.json');
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 const db = admin.firestore();
 
-// 2. Initialize Discord Client Application Client Core
+// 2. Initialize Discord Client
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
-const TOKEN = 'MTUyMzcyODg4MjEzMjQ1MTM2OA.G2s8r9.cuAragdNTBOgZonAt17QjrrBKYjTJTp-bUv9TU'; // Swap out for your real bot application token
-const CLIENT_ID = '1523728882132451368';   // Swap out for your application client identity id
+
+// SECURE FIX: We now pull these from your hidden local environment variables!
+const TOKEN = process.env.DISCORD_TOKEN; 
+const CLIENT_ID = process.env.CLIENT_ID;
 
 // 3. Declarative Interlocking Command Array Map Matrix
 const commands = [
