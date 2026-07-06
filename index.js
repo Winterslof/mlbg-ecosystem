@@ -12,7 +12,7 @@ const db = admin.firestore();
 
 // 2. Initialize Discord Client Application Client Core
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
-const TOKEN = 'MTUyMzcyODg4MjEzMjQ1MTM2OA.Gagh35.Zjko-5_XjP85fDs_Cs2HmqcnrN5BluEDhKj-Js'; // Swap out for your real bot application token
+const TOKEN = 'MTUyMzcyODg4MjEzMjQ1MTM2OA.G2s8r9.cuAragdNTBOgZonAt17QjrrBKYjTJTp-bUv9TU'; // Swap out for your real bot application token
 const CLIENT_ID = '1523728882132451368';   // Swap out for your application client identity id
 
 // 3. Declarative Interlocking Command Array Map Matrix
