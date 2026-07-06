@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MLBG - Secure Staff Terminal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes fadeUp { 0% { opacity: 0; transform: translateY(15px); } 100% { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // paste your firebaseConfig object here over this placeholder:
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.mlbgAuth = { auth, signInWithEmailAndPassword, signOut, onAuthStateChanged };
+    window.mlbgDb = { db, collection, onSnapshot, doc, updateDoc };
+  </script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen antialiased">
+
+  <div id="authGate" class="fixed inset-0 bg-slate-950 flex items-center justify-center z-50 p-4">
+    <div class="bg-slate-900 border border-rose-500/30 p-8 rounded-2xl max-w-md w-full shadow-2xl fade-in">
+      <div class="text-center mb-6">
+        <span class="text-4xl">🐞</span>
+        <h1 class="text-2xl font-bold mt-2 text-rose-500 tracking-wide">MLBG Staff Dashboard</h1>
+        <p class="text-sm text-slate-400 mt-1">Authorized Command Center Access Only</p>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs uppercase tracking-wider font-semibold text-slate-400 mb-1">Admin Email</label>
+          <input type="email" id="emailInput" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-rose-500 transition">
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wider font-semibold text-slate-400 mb-1">Secure Password</label>
+          <input type="password" id="passwordInput" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-rose-500 transition">
+        </div>
+        <button onclick="handleLogin()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold p-3 rounded-xl transition duration-200 mt-2 shadow-lg shadow-rose-600/20">Decrypt Console</button>
+        <p id="authError" class="text-rose-400 text-sm mt-2 hidden text-center font-medium bg-rose-500/10 py-2 rounded-lg border border-rose-500/20"></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="dashboardContainer" class="hidden">
+    <header class="bg-slate-950 border-b border-slate-800 p-4 sticky top-0 z-40 backdrop-blur-md bg-opacity-95">
+      <div class="max-w-7xl mx-auto flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+          <span class="text-2xl animate-pulse">🐾</span>
+          <span class="font-black text-xl tracking-wider text-white">MLBG <span class="text-rose-500">MANAGEMENT</span></span>
+        </div>
+        <button onclick="handleLogout()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium px-4 py-2 rounded-xl transition border border-slate-700">Disconnect Session</button>
+      </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6">
+      <div class="mb-8 bg-slate-950 border border-slate-800 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 class="text-2xl font-black text-white">Suggestions Live-Stream</h2>
+          <p class="text-sm text-slate-400 mt-1">Real-time suggestions running live from your Discord system.</p>
+        </div>
+        <div class="flex gap-2">
+          <span class="text-xs font-bold px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 flex items-center">Data Sync: Live ✅</span>
+        </div>
+      </div>
+
+      <div id="suggestionsBoard" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="text-slate-500 py-12 text-center col-span-full font-medium">Awaiting snapshot connection...</div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // System Handlers
+    window.addEventListener('load', () => {
+      const checker = setInterval(() => {
+        if (window.mlbgAuth) {
+          clearInterval(checker);
+          window.mlbgAuth.onAuthStateChanged(window.mlbgAuth.auth, user => {
+            const gate = document.getElementById('authGate');
+            const dash = document.getElementById('dashboardContainer');
+            if (user) {
+              gate.classList.add('hidden');
+              dash.classList.remove('hidden');
+              startLiveSync();
+            } else {
+              gate.classList.remove('hidden');
+              dash.classList.add('hidden');
+            }
+          });
+        }
+      }, 100);
+    });
+
+    async function handleLogin() {
+      const email = document.getElementById('emailInput').value;
+      const pass = document.getElementById('passwordInput').value;
+      const errorLabel = document.getElementById('authError');
+      try {
+        errorLabel.classList.add('hidden');
+        await window.mlbgAuth.signInWithEmailAndPassword(window.mlbgAuth.auth, email, pass);
+      } catch (err) {
+        errorLabel.textContent = "Error: Access Denied.";
+        errorLabel.classList.remove('hidden');
+      }
+    }
+
+    function handleLogout() {
+      window.mlbgAuth.signOut(window.mlbgAuth.auth);
+    }
+
+    async function updateStatus(id, newState) {
+      try {
+        const docRef = window.mlbgDb.doc(window.mlbgDb.db, "suggestions", id);
+        await window.mlbgDb.updateDoc(docRef, { status: newState });
+      } catch(e) {
+        console.error("Failed to alter remote state:", e);
+      }
+    }
+
+    function startLiveSync() {
+      const board = document.getElementById('suggestionsBoard');
+      const q = window.mlbgDb.collection(window.mlbgDb.db, "suggestions");
+
+      window.mlbgDb.onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+          board.innerHTML = `<div class="text-slate-500 py-12 text-center col-span-full bg-slate-950 rounded-2xl border border-slate-800">No suggestions inside data pipeline logs yet.</div>`;
+          return;
+        }
+
+        board.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          const id = docSnap.id;
+          
+          let statusStyle = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+          if (data.status === 'approved') statusStyle = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+          if (data.status === 'rejected') statusStyle = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+          if (data.status === 'partially-approved') statusStyle = "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
+
+          const card = document.createElement('div');
+          card.className = "bg-slate-950 border border-slate-800 p-6 rounded-2xl flex flex-col justify-between shadow-xl transition hover:border-slate-700 fade-in";
+          card.innerHTML = `
+            <div>
+              <div class="flex justify-between items-start mb-4">
+                <span class="text-xs font-mono bg-slate-900 px-2.5 py-1 rounded-lg text-slate-400 border border-slate-800 font-bold">#${id}</span>
+                <span class="text-xs uppercase font-extrabold tracking-wider px-2.5 py-1 rounded-lg border ${statusStyle}">${data.status}</span>
+              </div>
+              <h3 class="text-lg font-black text-white mb-2">${data.title}</h3>
+              <p class="text-sm text-slate-300 leading-relaxed font-normal">${data.description}</p>
+            </div>
+            <div class="mt-6 pt-4 border-t border-slate-900">
+              <div class="flex justify-between items-center text-xs text-slate-400 mb-4">
+                <span>By: <b class="text-slate-200">${data.author}</b></span>
+                <span class="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-md border border-slate-800">🔺 <b class="text-white">${data.upvotes || 0}</b></span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs font-bold">
+                <button onclick="updateStatus('${id}', 'approved')" class="bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/20 p-2 rounded-lg transition">Approve</button>
+                <button onclick="updateStatus('${id}', 'rejected')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 p-2 rounded-lg transition">Reject</button>
+              </div>
+            </div>
+          `;
+          board.appendChild(card);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
